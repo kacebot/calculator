@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Máy tính</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: 16px;
+  }
+  .calculator {
+    width: 100%;
+    max-width: 360px;
+    background: #111827;
+    border-radius: 24px;
+    padding: 20px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  }
+  .display {
+    background: #1f2937;
+    border-radius: 16px;
+    padding: 20px 16px;
+    text-align: right;
+    margin-bottom: 16px;
+    min-height: 96px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .expression {
+    color: #9ca3af;
+    font-size: 16px;
+    min-height: 22px;
+    word-break: break-all;
+  }
+  .result {
+    color: #f9fafb;
+    font-size: 40px;
+    font-weight: 600;
+    word-break: break-all;
+  }
+  .result.error { color: #f87171; font-size: 28px; }
+  .buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  button {
+    border: none;
+    border-radius: 14px;
+    height: 60px;
+    font-size: 20px;
+    cursor: pointer;
+    color: #f9fafb;
+    background: #374151;
+    transition: background 0.15s, transform 0.05s;
+  }
+  button:hover { background: #4b5563; }
+  button:active { transform: scale(0.96); }
+  button.op { background: #f59e0b; color: #111827; font-weight: 700; }
+  button.op:hover { background: #fbbf24; }
+  button.op.active { background: #fde68a; }
+  button.util { background: #1f2937; color: #fbbf24; }
+  button.equals { background: #10b981; color: #06281c; font-weight: 700; }
+  button.equals:hover { background: #34d399; }
+  button.zero { grid-column: span 2; }
+</style>
+</head>
+<body>
+<div class="calculator">
+  <div class="display">
+    <div class="expression" id="expression"></div>
+    <div class="result" id="result">0</div>
+  </div>
+  <div class="buttons">
+    <button class="util" data-action="clear">AC</button>
+    <button class="util" data-action="backspace">⌫</button>
+    <button class="util" data-action="percent">%</button>
+    <button class="op" data-op="÷">÷</button>
+
+    <button data-num="7">7</button>
+    <button data-num="8">8</button>
+    <button data-num="9">9</button>
+    <button class="op" data-op="×">×</button>
+
+    <button data-num="4">4</button>
+    <button data-num="5">5</button>
+    <button data-num="6">6</button>
+    <button class="op" data-op="−">−</button>
+
+    <button data-num="1">1</button>
+    <button data-num="2">2</button>
+    <button data-num="3">3</button>
+    <button class="op" data-op="+">+</button>
+
+    <button class="util" data-action="negate">+/−</button>
+    <button class="zero" data-num="0">0</button>
+    <button data-num=".">.</button>
+    <button class="equals" data-action="equals">=</button>
+  </div>
+</div>
+
+<script>
+  const expressionEl = document.getElementById('expression');
+  const resultEl = document.getElementById('result');
+
+  let current = '0';
+  let previous = null;
+  let operator = null;
+  let justEvaluated = false;
+
+  function render() {
+    resultEl.textContent = current;
+    resultEl.classList.toggle('error', current === 'Lỗi');
+    expressionEl.textContent = previous !== null && operator
+      ? `${previous} ${operator}` : '';
+    document.querySelectorAll('button.op').forEach(b =>
+      b.classList.toggle('active', operator !== null && b.dataset.op === operator));
+  }
+
+  function compute(a, b, op) {
+    const x = parseFloat(a), y = parseFloat(b);
+    switch (op) {
+      case '+': return x + y;
+      case '−': return x - y;
+      case '×': return x * y;
+      case '÷': return y === 0 ? NaN : x / y;
+    }
+  }
+
+  function format(n) {
+    if (Number.isNaN(n) || !Number.isFinite(n)) return 'Lỗi';
+    const rounded = Math.round(n * 1e12) / 1e12;
+    return String(rounded);
+  }
+
+  function inputDigit(d) {
+    if (current === 'Lỗi' || justEvaluated) { current = '0'; justEvaluated = false; }
+    if (d === '.' && current.includes('.')) return;
+    current = current === '0' && d !== '.' ? d : current + d;
+    render();
+  }
+
+  function inputOperator(op) {
+    if (current === 'Lỗi') return;
+    if (operator !== null && previous !== null && !justEvaluated) {
+      previous = format(compute(previous, current, operator));
+    } else {
+      previous = current;
+    }
+    operator = op;
+    current = '0';
+    justEvaluated = false;
+    render();
+  }
+
+  function equals() {
+    if (operator === null || previous === null || current === 'Lỗi') return;
+    const value = format(compute(previous, current, operator));
+    expressionEl.textContent = `${previous} ${operator} ${current} =`;
+    current = value;
+    previous = null;
+    operator = null;
+    justEvaluated = true;
+    resultEl.textContent = current;
+    resultEl.classList.toggle('error', current === 'Lỗi');
+    document.querySelectorAll('button.op').forEach(b => b.classList.remove('active'));
+  }
+
+  function clearAll() {
+    current = '0'; previous = null; operator = null; justEvaluated = false;
+    render();
+  }
+
+  document.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.num !== undefined) return inputDigit(btn.dataset.num);
+      if (btn.dataset.op) return inputOperator(btn.dataset.op);
+      const action = btn.dataset.action;
+      if (action === 'clear') return clearAll();
+      if (action === 'equals') return equals();
+      if (action === 'backspace') {
+        if (justEvaluated || current === 'Lỗi') return clearAll();
+        current = current.length > 1 ? current.slice(0, -1) : '0';
+        return render();
+      }
+      if (action === 'percent') {
+        if (current === 'Lỗi') return;
+        current = format(parseFloat(current) / 100);
+        return render();
+      }
+      if (action === 'negate') {
+        if (current === 'Lỗi' || current === '0') return;
+        current = current.startsWith('-') ? current.slice(1) : '-' + current;
+        return render();
+      }
+    });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (/^[0-9.]$/.test(e.key)) return inputDigit(e.key);
+    const ops = { '+': '+', '-': '−', '*': '×', '/': '÷' };
+    if (ops[e.key]) return inputOperator(ops[e.key]);
+    if (e.key === 'Enter' || e.key === '=') { e.preventDefault(); return equals(); }
+    if (e.key === 'Escape') return clearAll();
+    if (e.key === 'Backspace') {
+      if (justEvaluated || current === 'Lỗi') return clearAll();
+      current = current.length > 1 ? current.slice(0, -1) : '0';
+      return render();
+    }
+    if (e.key === '%') {
+      current = format(parseFloat(current) / 100);
+      return render();
+    }
+  });
+
+  render();
+</script>
+</body>
+</html>
